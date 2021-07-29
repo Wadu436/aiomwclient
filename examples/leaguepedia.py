@@ -1,5 +1,6 @@
 """
 Leaguepedia mwclient examples ported to the aiomwclient
+https://lol.fandom.com/wiki/Help:Leaguepedia_API#Sample_Code
 """
 import asyncio
 
@@ -9,6 +10,7 @@ import aiomwclient
 async def main():
     site = await aiomwclient.Site("lol.fandom.com", path="/", scheme="https")
 
+    # EXAMPLE 1: Basic search
     print("---- Example 1 ----")
     response = await site.api(
         "cargoquery",
@@ -18,16 +20,18 @@ async def main():
     )
     print(response)
 
+    # EXAMPLE 2: Results before/after date
     print("---- Example 2 ----")
     response = await site.api(
         "cargoquery",
         limit="10",
         tables="ScoreboardGames=SG",
         fields="SG.Tournament, SG.DateTime_UTC, SG.Team1, SG.Team2",
-        where="SG.DateTime_UTC >= '2019-08-01 00:00:00'",  # Results after Aug 1, 2019
+        where="SG.DateTime_UTC >= '2019-08-08' AND SG.DateTime_UTC <= '2019-08-10'",  # Results after Aug 8, 2019 and before or during Aug 1-, 2019
     )
     print(response)
 
+    # EXAMPLE 3: Multiple table search
     print("---- Example 3 ----")
     page_to_query = "Data:2019 Mid-Season Invitational/Play-In"
     response = await site.api(
@@ -44,6 +48,7 @@ async def main():
 
     import datetime as dt
 
+    # EXAMPLE 4: Results in a day, joining ScoreboardGames and ScoreboardPlayers
     print("---- Example 4 ----")
     date = "2020-01-25"
     date = dt.datetime.strptime(date, "%Y-%m-%d").date()
@@ -62,6 +67,7 @@ async def main():
     )
     print(response)
 
+    # EXAMPLE 5: Save Player image
     print("---- Example 5 ----")
     import json
     import re
@@ -101,6 +107,9 @@ async def main():
     await get_filename_url_to_open(site, url, player)
     print(f"{url} -> {player}.png")
 
+    # Close the site once we're done with it
+    await site.close()
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.get_event_loop().run_until_complete(main())
