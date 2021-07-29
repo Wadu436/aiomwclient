@@ -45,12 +45,7 @@ class Site(object):
 
     api_limit = 500
 
-    async def __new__(cls, *a, **kw):
-        instance = super().__new__(cls)
-        await instance.__init__(*a, **kw)
-        return instance
-
-    async def __init__(
+    async def init(
         self,
         host,
         path="/w/",
@@ -68,7 +63,7 @@ class Site(object):
         client_certificate=None,
         custom_headers=None,
         scheme="https",
-    ):
+    ) -> "Site":
         # Setup member variables
         self.host = host
         self.path = path
@@ -151,6 +146,7 @@ class Site(object):
         if do_init:
             try:
                 await self.site_init()
+
             except errors.APIError as e:
                 if e.args[0] == "mwoauth-invalid-authorization":
                     raise errors.OAuthAuthorizationError(self, e.code, e.info)
@@ -158,6 +154,8 @@ class Site(object):
                 # Private wiki, do init after login
                 if e.args[0] not in {u"unknown_action", u"readapidenied"}:
                     raise
+
+        return self
 
     async def site_init(self):
 
@@ -442,8 +440,9 @@ class Site(object):
                 form_data = aiohttp.FormData()
                 for k, v in self.requests.items():
                     args[k] = v
+                # Get rid of empty arguments
+                data = {k: v for (k, v) in data.items() if v is not None}
                 if http_method == "GET":
-                    data = {k: v for (k, v) in data.items() if v is not None}
                     args["params"] = data
                 else:
                     for n, v in data.items():
@@ -574,7 +573,7 @@ class Site(object):
         except errors.APIError as e:
             if e.args[0] == u"noemail":
                 raise errors.NoSpecifiedEmail(user, e.args[1])
-            raise errors.EmailError(*e)
+            raise errors.EmailError(*e.args)
 
         return info
 
@@ -732,7 +731,7 @@ class Site(object):
                 "exactly one of 'file', 'filekey' and 'url' must be specified"
             )
 
-        image = self.Images[filename]
+        image = await self.Images.get(filename)
         if not image.can("upload"):
             raise errors.InsufficientPermission(filename)
 
@@ -783,7 +782,8 @@ class Site(object):
             # Since the filename in Content-Disposition is not interpreted,
             # we can send some ascii-only dummy name rather than the real
             # filename, which might contain non-ascii.
-            files = {"file": ("fake-filename", file)}
+            # files = {"file": ("fake-filename", file)}
+            files = {"file": file}
 
         sleeper = self.sleepers.make()
         while True:

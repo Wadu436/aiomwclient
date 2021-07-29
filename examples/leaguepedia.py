@@ -8,7 +8,9 @@ import aiomwclient
 
 
 async def main():
-    site = await aiomwclient.Site("lol.fandom.com", path="/", scheme="https")
+    site: aiomwclient.Site = await aiomwclient.Site().init(
+        "lol.fandom.com", path="/", scheme="https"
+    )
 
     # EXAMPLE 1: Basic search
     print("---- Example 1 ----")

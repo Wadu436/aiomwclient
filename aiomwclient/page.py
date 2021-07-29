@@ -6,7 +6,7 @@ from aiomwclient.util import parse_timestamp
 
 
 class Page(object):
-    async def new(self, site, name, info=None, extra_properties=None):
+    async def init(self, site, name, info=None, extra_properties=None) -> "Page":
         if type(name) is type(self):
             self.__dict__.update(name.__dict__)
             return
@@ -65,6 +65,8 @@ class Page(object):
 
         self.last_rev_time = None
         self.edit_time = None
+
+        return self
 
     async def redirects_to(self):
         """ Get the redirect target page, or None if the page is not a redirect."""
@@ -261,11 +263,14 @@ class Page(object):
             self.last_rev_time = parse_timestamp(result["edit"].get("newtimestamp"))
 
         # Workaround for https://phabricator.wikimedia.org/T211233
-        for cookie in self.site.connection.cookies:
-            if "PostEditRevision" in cookie.name:
-                self.site.connection.cookies.clear(
-                    cookie.domain, cookie.path, cookie.name
-                )
+        # for cookie in self.site.connection.cookies:
+        new_cookies = []
+        for cookie in self.site.connection.cookie_jar:
+            if "PostEditRevision" in cookie.key:
+                # Delete cookie (https://github.com/aio-libs/aiohttp/issues/4942)
+                cookie["max-age"] = -1
+                new_cookies.append((cookie.key, cookie))
+        self.site.connection.cookie_jar.update_cookies(new_cookies)
 
         # clear the page text cache
         self._textcache = {}
@@ -462,7 +467,9 @@ class Page(object):
         API doc: https://www.mediawiki.org/wiki/API:Extlinks
 
         """
-        return aiomwclient.listing.PageProperty(self, "extlinks", "el", return_values="*")
+        return aiomwclient.listing.PageProperty(
+            self, "extlinks", "el", return_values="*"
+        )
 
     def images(self, generator=True):
         """List files/images embedded in the current page.
@@ -511,7 +518,9 @@ class Page(object):
         if redirects:
             kwargs["redirects"] = "1"
         if generator:
-            return aiomwclient.listing.PagePropertyGenerator(self, "links", "pl", **kwargs)
+            return aiomwclient.listing.PagePropertyGenerator(
+                self, "links", "pl", **kwargs
+            )
         else:
             return aiomwclient.listing.PageProperty(
                 self, "links", "pl", return_values="title", **kwargs

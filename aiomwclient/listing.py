@@ -255,10 +255,10 @@ class PageList(GeneratorList):
             **kwargs
         )
 
-    def __getitem__(self, name):
-        return self.get(name, None)
+    # def __getitem__(self, name):
+    #     return self.get(name, None)
 
-    def get(self, name, info=()):
+    async def get(self, name, info=()):
         """Return the page of name `name` as an object.
 
         If self.namespace is not zero, use {namespace}:{name} as the
@@ -287,7 +287,12 @@ class PageList(GeneratorList):
             6: aiomwclient.image.Image,
         }.get(namespace, aiomwclient.page.Page)
 
-        return cls(self.site, full_page_name, info)
+        if namespace == 6:
+            return await aiomwclient.image.Image().init(self.site, full_page_name, info)
+        elif namespace == 14:
+            return Category(self.site, full_page_name, info)
+        else:
+            return aiomwclient.page.Page(self.site, full_page_name, info)
 
     def guess_namespace(self, name):
         """Guess the namespace from name

@@ -3,8 +3,8 @@ import aiomwclient.page
 
 
 class Image(aiomwclient.page.Page):
-    def __init__(self, site, name, info=None):
-        super(Image, self).__init__(
+    async def init(self, site, name, info=None) -> "Image":
+        await super(Image, self).init(
             site,
             name,
             info,
@@ -19,6 +19,7 @@ class Image(aiomwclient.page.Page):
         )
         self.imagerepository = self._info.get("imagerepository", "")
         self.imageinfo = self._info.get("imageinfo", ({},))[0]
+        return self
 
     def imagehistory(self):
         """
