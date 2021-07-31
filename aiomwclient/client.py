@@ -1241,9 +1241,8 @@ class Site(object):
         }
 
         revisions = []
-        pages = (
-            await self.get("query", **kwargs).get("query", {}).get("pages", {}).values()
-        )
+        res = await self.get("query", **kwargs)
+        pages = res.get("query", {}).get("pages", {}).values()
         for page in pages:
             for revision in page.get("revisions", ()):
                 revision["pageid"] = page.get("pageid")

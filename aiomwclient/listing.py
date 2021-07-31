@@ -50,7 +50,7 @@ class List(object):
     async def __anext__(self):
         if self.max_items is not None:
             if self.count >= self.max_items:
-                raise StopIteration
+                raise StopAsyncIteration
 
         # For filered lists, we might have to do several requests
         # to get the next element due to miser mode.
@@ -62,7 +62,7 @@ class List(object):
                     break
             except StopIteration:
                 if self.last:
-                    raise
+                    raise StopAsyncIteration
                 await self.load_chunk()
 
         self.count += 1
@@ -180,10 +180,10 @@ class GeneratorList(List):
     async def __anext__(self):
         info = await super(GeneratorList, self).__anext__()
         if info["ns"] == 14:
-            return Category(self.site, u"", info)
+            return await Category().init(self.site, u"", info)
         if info["ns"] == 6:
-            return aiomwclient.image.Image(self.site, u"", info)
-        return aiomwclient.page.Page(self.site, u"", info)
+            return await aiomwclient.image.Image().init(self.site, u"", info)
+        return await aiomwclient.page.Page().init(self.site, u"", info)
 
     async def load_chunk(self):
         # Put this here so that the constructor does not fail
@@ -195,13 +195,18 @@ class GeneratorList(List):
 
 
 class Category(aiomwclient.page.Page, GeneratorList):
-    def __init__(self, site, name, info=None, namespace=None):
-        aiomwclient.page.Page.__init__(self, site, name, info)
+    # Overwrite GeneratorList's __init__ method, we call it in the async init method instead.
+    def __init__(self):
+        pass
+
+    async def init(self, site, name, info=None, namespace=None):
+        await aiomwclient.page.Page.init(self, site, name, info)
         kwargs = {}
         kwargs["gcmtitle"] = self.name
         if namespace:
             kwargs["gcmnamespace"] = namespace
         GeneratorList.__init__(self, site, "categorymembers", "cm", **kwargs)
+        return self
 
     def __repr__(self):
         return "<Category object '%s' for %s>" % (self.name.encode("utf-8"), self.site)
@@ -282,17 +287,12 @@ class PageList(GeneratorList):
                 # raised when `namespace` doesn't have a `startswith` attribute
                 namespace = 0
 
-        cls = {
-            14: Category,
-            6: aiomwclient.image.Image,
-        }.get(namespace, aiomwclient.page.Page)
-
         if namespace == 6:
             return await aiomwclient.image.Image().init(self.site, full_page_name, info)
         elif namespace == 14:
-            return Category(self.site, full_page_name, info)
+            return await Category().init(self.site, full_page_name, info)
         else:
-            return aiomwclient.page.Page(self.site, full_page_name, info)
+            return await aiomwclient.page.Page().init(self.site, full_page_name, info)
 
     def guess_namespace(self, name):
         """Guess the namespace from name

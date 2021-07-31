@@ -76,7 +76,7 @@ class Page(object):
         if "redirects" in info["query"]:
             for page in info["query"]["redirects"]:
                 if page["from"] == self.name:
-                    return Page(self.site, page["to"])
+                    return await Page().init(self.site, page["to"])
             return None
         else:
             return None
